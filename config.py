@@ -10,7 +10,11 @@ BUCKET_NAME = os.environ.get('BUCKET', 'museum-tech-xx')
 JSON_FILE_NAME = os.environ.get('FILE', 'items.json')
 
 # Лимит длины одной части описания (символов)
-MAX_PART_LENGTH = 1024
+# Учитываем запас для служебных фраз:
+# - " Рассказать дальше?" = 19 символов
+# - " Это всё про этот экспонат. Назови другой номер на наклейке." = 60 символов
+# Используем 964 как безопасный лимит (1024 - 60)
+MAX_PART_LENGTH = 964
 
 # Настройки AWS S3 (Yandex Object Storage использует S3 API)
 S3_ENDPOINT = os.environ.get('S3_ENDPOINT', 'https://storage.yandexcloud.net')

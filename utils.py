@@ -206,7 +206,7 @@ def get_session_state(request: dict) -> dict:
     })
 
 
-def format_response(text: str, tts: Optional[str] = None, end_session: bool = False, session_state: Optional[dict] = None) -> dict:
+def format_response(text: str, tts: Optional[str] = None, end_session: bool = False, session_state: Optional[dict] = None, version: str = '1.0') -> dict:
     """
     Форматирует ответ для Яндекс.Диалогов.
     
@@ -215,6 +215,7 @@ def format_response(text: str, tts: Optional[str] = None, end_session: bool = Fa
         tts: Текст для озвучивания (если отличается от text)
         end_session: Завершить сессию
         session_state: Состояние сессии
+        version: Версия протокола (по умолчанию '1.0')
         
     Returns:
         Отформатированный ответ
@@ -224,7 +225,8 @@ def format_response(text: str, tts: Optional[str] = None, end_session: bool = Fa
             'text': text,
             'tts': tts if tts else text,
             'end_session': end_session
-        }
+        },
+        'version': version
     }
     
     if session_state:

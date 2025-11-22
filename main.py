@@ -96,13 +96,14 @@ def load_items() -> Dict[str, list]:
         return load_items_from_s3()
 
 
-def handle_get_number(number: int, session_state: dict) -> dict:
+def handle_get_number(number: int, session_state: dict, version: str = '1.0') -> dict:
     """
     Обрабатывает запрос на получение описания экспоната по номеру.
     
     Args:
         number: Номер экспоната
         session_state: Текущее состояние сессии
+        version: Версия протокола
         
     Returns:
         Ответ навыка
@@ -126,7 +127,8 @@ def handle_get_number(number: int, session_state: dict) -> dict:
         
         return utils.format_response(
             response_text,
-            session_state=session_state
+            session_state=session_state,
+            version=version
         )
     
     # Получаем первую часть описания
@@ -147,16 +149,18 @@ def handle_get_number(number: int, session_state: dict) -> dict:
     
     return utils.format_response(
         response_text,
-        session_state=session_state
+        session_state=session_state,
+        version=version
     )
 
 
-def handle_next(session_state: dict) -> dict:
+def handle_next(session_state: dict, version: str = '1.0') -> dict:
     """
     Обрабатывает команду "дальше" для получения следующей части описания.
     
     Args:
         session_state: Текущее состояние сессии
+        version: Версия протокола
         
     Returns:
         Ответ навыка
@@ -175,7 +179,8 @@ def handle_next(session_state: dict) -> dict:
         session_state['awaiting_number'] = True
         return utils.format_response(
             response_text,
-            session_state=session_state
+            session_state=session_state,
+            version=version
         )
     
     number_str = str(current_item)
@@ -191,7 +196,8 @@ def handle_next(session_state: dict) -> dict:
         session_state['current_part'] = 0
         return utils.format_response(
             response_text,
-            session_state=session_state
+            session_state=session_state,
+            version=version
         )
     
     parts = items_dict[number_str]
@@ -212,7 +218,8 @@ def handle_next(session_state: dict) -> dict:
         
         return utils.format_response(
             response_text,
-            session_state=session_state
+            session_state=session_state,
+            version=version
         )
     else:
         # Нет больше частей
@@ -224,16 +231,18 @@ def handle_next(session_state: dict) -> dict:
         session_state['awaiting_number'] = True
         return utils.format_response(
             response_text,
-            session_state=session_state
+            session_state=session_state,
+            version=version
         )
 
 
-def handle_repeat(session_state: dict) -> dict:
+def handle_repeat(session_state: dict, version: str = '1.0') -> dict:
     """
     Обрабатывает команду "повтори" для повторения текущей части.
     
     Args:
         session_state: Текущее состояние сессии
+        version: Версия протокола
         
     Returns:
         Ответ навыка
@@ -252,7 +261,8 @@ def handle_repeat(session_state: dict) -> dict:
         session_state['awaiting_number'] = True
         return utils.format_response(
             response_text,
-            session_state=session_state
+            session_state=session_state,
+            version=version
         )
     
     number_str = str(current_item)
@@ -268,7 +278,8 @@ def handle_repeat(session_state: dict) -> dict:
         session_state['current_part'] = 0
         return utils.format_response(
             response_text,
-            session_state=session_state
+            session_state=session_state,
+            version=version
         )
     
     parts = items_dict[number_str]
@@ -284,19 +295,21 @@ def handle_repeat(session_state: dict) -> dict:
         
         return utils.format_response(
             response_text,
-            session_state=session_state
+            session_state=session_state,
+            version=version
         )
     else:
         # Неожиданная ситуация
-        return handle_get_number(current_item, session_state)
+        return handle_get_number(current_item, session_state, version)
 
 
-def handle_restart(session_state: dict) -> dict:
+def handle_restart(session_state: dict, version: str = '1.0') -> dict:
     """
     Обрабатывает команду "сначала" для повторения описания с начала.
     
     Args:
         session_state: Текущее состояние сессии
+        version: Версия протокола
         
     Returns:
         Ответ навыка
@@ -311,19 +324,21 @@ def handle_restart(session_state: dict) -> dict:
         session_state['awaiting_number'] = True
         return utils.format_response(
             response_text,
-            session_state=session_state
+            session_state=session_state,
+            version=version
         )
     
     # Начинаем с первой части
-    return handle_get_number(current_item, session_state)
+    return handle_get_number(current_item, session_state, version)
 
 
-def handle_invalid(session_state: dict) -> dict:
+def handle_invalid(session_state: dict, version: str = '1.0') -> dict:
     """
     Обрабатывает нераспознанную команду.
     
     Args:
         session_state: Текущее состояние сессии
+        version: Версия протокола
         
     Returns:
         Ответ навыка
@@ -336,7 +351,8 @@ def handle_invalid(session_state: dict) -> dict:
     
     return utils.format_response(
         response_text,
-        session_state=session_state
+        session_state=session_state,
+        version=version
     )
 
 
@@ -353,6 +369,9 @@ def handler(event, context):
     """
     global items_dict
     
+    # Получаем версию из запроса
+    version = event.get('version', '1.0') if isinstance(event, dict) else '1.0'
+    
     # Загружаем данные при холодном старте
     if items_dict is None:
         try:
@@ -361,24 +380,28 @@ def handler(event, context):
                 logger.error("Не удалось загрузить данные экспонатов")
                 return utils.format_response(
                     "Извините, произошла ошибка. Попробуйте позже.",
-                    end_session=True
+                    end_session=True,
+                    version=version
                 )
         except Exception as e:
             logger.error(f"Ошибка при загрузке данных: {e}")
             return utils.format_response(
                 "Извините, произошла ошибка при загрузке данных. Попробуйте позже.",
-                end_session=True
+                end_session=True,
+                version=version
             )
     
     # Проверяем тип запроса
     if isinstance(event, str):
         try:
             event = json.loads(event)
+            version = event.get('version', '1.0')
         except json.JSONDecodeError:
             logger.error("Не удалось распарсить событие")
             return utils.format_response(
                 "Извините, произошла ошибка обработки запроса.",
-                end_session=True
+                end_session=True,
+                version=version
             )
     
     # Проверяем, что это запрос от Яндекс.Диалогов
@@ -386,7 +409,8 @@ def handler(event, context):
         logger.error("Некорректный формат запроса")
         return utils.format_response(
             "Извините, произошла ошибка.",
-            end_session=True
+            end_session=True,
+            version=version
         )
     
     # Проверяем новый сеанс (приветствие)
@@ -396,7 +420,7 @@ def handler(event, context):
     # Если новый сеанс, приветствуем пользователя
     if is_new_session:
         welcome_text = (
-            "Это музей Музей техники и предметов быта XX века. "
+            "Это музей техники и предметов быта XX века. "
             "Назови номер на наклейке — например, номер 5."
         )
         session_state = {
@@ -406,21 +430,23 @@ def handler(event, context):
         }
         return utils.format_response(
             welcome_text,
-            session_state=session_state
+            session_state=session_state,
+            version=version
         )
     
     # Определяем интент
     intent, number = utils.get_intent_from_request(event)
     
-    # Обрабатываем интент
+    # Обрабатываем интент (передаем version через глобальную переменную или параметр)
+    # Для упрощения передадим version через параметр в функции обработки
     if intent == 'get_number':
-        return handle_get_number(number, session_state)
+        return handle_get_number(number, session_state, version)
     elif intent == 'next':
-        return handle_next(session_state)
+        return handle_next(session_state, version)
     elif intent == 'repeat':
-        return handle_repeat(session_state)
+        return handle_repeat(session_state, version)
     elif intent == 'restart':
-        return handle_restart(session_state)
+        return handle_restart(session_state, version)
     else:
-        return handle_invalid(session_state)
+        return handle_invalid(session_state, version)
 
